@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: jeu-des-encheres
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz
