@@ -106,7 +106,7 @@ function act(action) {
     throw err;
   }
   if (action.type === "draw" && s.config.mode !== "open") ui.secretFor = actor;
-  if (action.type === "bid" || action.type === "pass") ui.peek = false;
+  if (action.type === "bid" || action.type === "pass" || action.type === "offer") ui.peek = false;
   render();
 }
 
@@ -229,7 +229,7 @@ function howtoModal() {
     <div class="panel modal howto" data-stop>
       <div class="modal-head"><h2>Comment jouer</h2><button class="btn ghost small" data-action="close-howto">Fermer</button></div>
       <h3>Le but</h3>
-      <p>Avec ton budget virtuel, remporte des persos aux enchères pour composer la meilleure équipe. À la fin, chacun vote pour la meilleure équipe (pas la sienne !).</p>
+      <p>Avec ton budget virtuel, remporte des persos aux enchères pour composer la meilleure équipe. À la fin, chacun vote pour la meilleure équipe (la sienne compte aussi).</p>
       <h3>Un tour</h3>
       <ul>
         <li>Au début, le hasard désigne qui a la main. Ensuite, la main tourne joueur par joueur.</li>
@@ -246,7 +246,9 @@ function howtoModal() {
       </ul>
       <h3>Les règles du budget</h3>
       <ul>
-        <li>Tu dois toujours garder 10 M par place encore vide dans ton équipe : ta mise maximum est calculée pour ça.</li>
+        <li>Pas de limite : tu peux miser tout ton argent.</li>
+        <li>Si tu n'as plus d'argent (moins de 10 M) et que tu tires un perso, ce sont les autres qui misent dessus. Si personne ne mise, il te revient gratuitement.</li>
+        <li>En face-à-face, ton adversaire choisit : le prendre pour 10 M, ou te le laisser gratuitement.</li>
         <li>Une équipe complète ne reçoit plus la main et ne mise plus.</li>
         <li>Quand il ne reste qu'un joueur incomplet, il reçoit gratuitement des persos tirés au hasard pour finir son équipe.</li>
       </ul>
@@ -354,7 +356,7 @@ function playersStrip() {
       const tags = [];
       if (s.handId === p.id) tags.push(`<span class="tag hand">a la main</span>`);
       if (c?.highBidder === p.id) tags.push(`<span class="tag high">en tête · ${c.high} M</span>`);
-      if (out && !full) tags.push(`<span class="tag">a laissé</span>`);
+      if (out && !full) tags.push(`<span class="tag">${c.broke && c.drawerId === p.id ? "sans argent" : "a laissé"}</span>`);
       if (full) tags.push(`<span class="tag">équipe complète</span>`);
       if (session.kind === "online" && !p.connected) tags.push(`<span class="tag">hors ligne</span>`);
       if (session.kind === "online" && p.id === s.me) tags.push(`<span class="tag">toi</span>`);
@@ -402,7 +404,7 @@ function stageCard() {
     const caption = id ? null : (s.config.mode === "open" ? "" : "Perso mystère");
     return charCard(id, { price: s.current.highBidder ? s.current.high : null, caption });
   }
-  if (s.lastSale) return charCard(s.lastSale.charId, { price: s.lastSale.price, caption: "Dernier achat" });
+  if (s.lastSale) return charCard(s.lastSale.charId, { price: s.lastSale.free ? null : s.lastSale.price, caption: "Dernier achat" });
   return charCard(null, { caption: "La pioche attend…" });
 }
 
@@ -411,13 +413,17 @@ function auctionInfo() {
   const c = s.current;
   if (s.phase !== "bidding") {
     if (!s.lastSale) return "";
-    return `<div class="auction-info muted">Dernier achat : ${pname(s.lastSale.winnerId)} pour ${money(s.lastSale.price)}</div>`;
+    return `<div class="auction-info muted">${s.lastSale.free
+      ? `Dernier perso : récupéré gratuitement par ${pname(s.lastSale.winnerId)}`
+      : `Dernier achat : ${pname(s.lastSale.winnerId)} pour ${money(s.lastSale.price)}`}</div>`;
   }
   const secret = s.config.mode !== "open";
   return `<div class="auction-info">
     ${c.highBidder
       ? `<div class="muted">Mise actuelle</div><div class="high">${money(c.high)}</div><div>par <b>${pname(c.highBidder)}</b></div>`
-      : `<div class="muted">${pname(c.drawerId)} doit ouvrir l'enchère</div>`}
+      : c.broke
+        ? `<div class="muted">${pname(c.drawerId)} n'a plus d'argent : aux autres de miser. Si personne ne mise, il récupère ce perso gratuitement.</div>`
+        : `<div class="muted">${pname(c.drawerId)} doit ouvrir l'enchère</div>`}
     ${secret ? `<div class="muted" style="margin-top:6px;font-size:.85rem">Seul ${pname(c.drawerId)} connaît ce perso.</div>` : ""}
     ${c.hint ? `<div class="hint-box"><b>Indice de ${pname(c.drawerId)} :</b> ${esc(c.hint)}</div>` : ""}
   </div>`;
@@ -436,7 +442,9 @@ function actionPanel() {
     const mineHand = s.handId === myId;
     if (!mineHand) return `<h2>En attente</h2><p class="status">${pname(s.handId)} a la main et va tirer un perso.</p>`;
     return `${who}<h2>${session.kind === "local" ? pname(myId) + ", à toi !" : "Tu as la main !"}</h2>
-      <p class="status">Tire un perso au hasard dans la pioche. Tu devras ouvrir l'enchère à 10 M minimum.</p>
+      <p class="status">${E.isBroke(s, mine)
+        ? "Tu n'as plus d'argent : tire un perso, les autres pourront miser dessus. Si personne ne mise, il est pour toi, gratuitement."
+        : "Tire un perso au hasard dans la pioche. Tu devras ouvrir l'enchère à 10 M minimum."}</p>
       <button class="btn big" data-action="draw">${esc(L.draw)}<span class="sub">Tirer un perso</span></button>`;
   }
 
@@ -444,25 +452,50 @@ function actionPanel() {
     if (!mine || mine.team.length >= s.config.teamSize) {
       return `<h2>Spectateur</h2><p class="status">Ton équipe est complète : tu regardes les autres s'affronter.</p>`;
     }
+    const secret = s.config.mode !== "open";
+    const drawer = c.drawerId === myId;
+    const peekBtn = session.kind === "local" && secret && drawer && !c.highBidder
+      ? `<button class="btn ghost small" data-action="peek">${ui.peek ? "Cacher le perso" : `Revoir mon perso (${pname(myId)} seulement)`}</button>` : "";
+    if (c.broke && drawer && c.turnId === myId) {
+      // Tireur sans argent, mode avec indice : il présente son perso aux autres.
+      const key = `offer-${s.history.length}`;
+      if (ui.bidKey !== key) { ui.bidKey = key; ui.hint = ""; }
+      return `${who}<h2>Présente ton perso</h2>
+        <p class="status">Tu n'as plus d'argent : les autres vont miser sur ce perso. Si personne ne mise, il est pour toi, gratuitement.</p>
+        <label for="f-hint">Ton indice</label>
+        <input id="f-hint" type="text" maxlength="${E.HINT_MAX}" data-field="hint" value="${esc(ui.hint)}" placeholder="Ex. : Il ne sait pas nager">
+        <div class="actions"><button class="btn big" data-action="offer">Présenter mon perso<span class="sub">Aux autres de miser</span></button></div>
+        <div style="margin-top:10px">${peekBtn}</div>`;
+    }
     if (c.turnId !== myId) {
       const out = !c.inAuction.includes(myId);
-      return `<h2>${out ? "Tu as laissé" : "Patience…"}</h2>
-        <p class="status">${out ? "Tu ne participes plus à cette enchère." : ""} Au tour de <b>${pname(c.turnId)}</b>${c.highBidder ? "" : " d'ouvrir l'enchère"}.</p>`;
+      const status = c.broke && drawer
+        ? "Tu n'as plus d'argent : les autres décident. Si personne ne mise, ce perso est pour toi, gratuitement."
+        : out ? "Tu ne participes plus à cette enchère." : "";
+      return `<h2>${c.broke && drawer ? "Les autres décident" : out ? "Tu as laissé" : "Patience…"}</h2>
+        <p class="status">${status} Au tour de <b>${pname(c.turnId)}</b>${c.highBidder ? "" : " d'ouvrir l'enchère"}.</p>`;
     }
     const opening = !c.highBidder;
     const min = E.minNextBid(s);
     const max = E.maxBid(s, mine);
+    if (c.broke && opening && c.inAuction.length === 1) {
+      // Face-à-face avec un tireur sans argent : prendre pour la mise minimum, ou lui laisser.
+      return `${who}<h2>À toi de choisir</h2>
+        <p class="status">${pname(c.drawerId)} n'a plus d'argent. Tu prends ce perso pour <b>${money(min)}</b>, ou tu le lui laisses gratuitement.</p>
+        <div class="actions">
+          <button class="btn big" data-action="take">Le prendre<span class="sub">Pour ${min} M</span></button>
+          <button class="btn big danger" data-action="pass">Le laisser<span class="sub">Gratuit pour ${pname(c.drawerId)}</span></button>
+        </div>`;
+    }
     const key = `${s.history.length}-${c.bids.length}-${myId}`;
     if (ui.bidKey !== key) { ui.bidKey = key; ui.bid = min; ui.hint = ""; }
-    const secret = s.config.mode !== "open";
-    const peekBtn = session.kind === "local" && secret && opening
-      ? `<button class="btn ghost small" data-action="peek">${ui.peek ? "Cacher le perso" : `Revoir mon perso (${pname(myId)} seulement)`}</button>` : "";
     return `${who}<h2>${opening ? "Ouvre l'enchère" : "À toi de jouer"}</h2>
       <p class="status">${opening
-        ? (secret ? "Toi seul sais qui est ce perso. Fais monter les autres… ou pas." : "Fixe la mise de départ.")
+        ? (c.broke ? `${pname(c.drawerId)} n'a plus d'argent : mise sur son perso, ou laisse. Si personne ne mise, il le récupère gratuitement.`
+          : secret ? "Toi seul sais qui est ce perso. Fais monter les autres… ou pas." : "Fixe la mise de départ.")
         : `Mise actuelle : <b>${money(c.high)}</b> par ${pname(c.highBidder)}.`}
         Ta mise maximum : <b>${money(max)}</b>.</p>
-      ${opening && s.config.mode === "blindHint" ? `
+      ${opening && drawer && s.config.mode === "blindHint" ? `
         <label for="f-hint">Ton indice (affiché avec ta mise)</label>
         <input id="f-hint" type="text" maxlength="${E.HINT_MAX}" data-field="hint" value="${esc(ui.hint)}" placeholder="Ex. : Il ne sait pas nager">` : ""}
       <label for="f-bid">Montant (en millions)</label>
@@ -474,7 +507,7 @@ function actionPanel() {
       </div>
       <div class="actions">
         <button class="btn big" data-action="bid" ${max < min ? "disabled" : ""}>${esc(opening ? L.open : L.raise)}<span class="sub">Miser</span></button>
-        ${opening ? "" : `<button class="btn big danger" data-action="pass">${esc(L.pass)}<span class="sub">Laisser</span></button>`}
+        ${opening && !c.broke ? "" : `<button class="btn big danger" data-action="pass">${esc(L.pass)}<span class="sub">Laisser</span></button>`}
       </div>
       <div style="margin-top:10px">${peekBtn}</div>`;
   }
@@ -521,16 +554,15 @@ function renderVote() {
     ${topbar()}
     <section class="panel" style="text-align:center;margin-bottom:16px">
       <h2 style="font-size:2.6rem">Place au vote !</h2>
-      <p class="muted">${local ? `Vote de <b>${pname(myId)}</b> (les autres ne regardent pas).` : "Vote pour la meilleure équipe. Pas la tienne !"} ${cast}/${s.players.length} votes.</p>
+      <p class="muted">${local ? `Vote de <b>${pname(myId)}</b> (les autres ne regardent pas).` : "Vote pour la meilleure équipe, la tienne compte aussi."} ${cast}/${s.players.length} votes.</p>
     </section>
     <div class="teams">${s.players.map((p) => `
       <section class="panel team vote-team ${p.id === myId ? "mine" : ""}">
         <h3><span>${esc(p.name)}</span><span class="muted" style="font-size:1rem">reste ${money(p.money)}</span></h3>
         ${teamThumbs(p)}
         <div style="margin-top:12px">
-          ${p.id === myId ? `<span class="muted">${local ? "Son équipe" : "Ton équipe"}</span>`
-            : `<button class="btn ${myVote === p.id ? "" : "ghost"}" data-action="vote" data-value="${p.id}">
-                ${myVote === p.id ? "Ton vote ✔" : esc(u.labels.vote)}<span class="sub">Voter</span></button>`}
+          <button class="btn ${myVote === p.id ? "" : "ghost"}" data-action="vote" data-value="${p.id}">
+            ${myVote === p.id ? "Ton vote ✔" : esc(u.labels.vote)}<span class="sub">${p.id === myId ? (local ? "Voter pour son équipe" : "Voter pour ton équipe") : "Voter"}</span></button>
         </div>
       </section>`).join("")}</div>
   </div>`;
@@ -584,7 +616,10 @@ function renderOverlay() {
   if (s.history.length > ui.seenSales) {
     ui.seenSales = s.history.length;
     const sale = s.lastSale || s.history[s.history.length - 1];
-    showReveal(`
+    showReveal(sale.free ? `
+      <div class="sold">Personne n'en veut !</div>
+      ${charCard(sale.charId, { flip: true })}
+      <div class="who"><b>${pname(sale.winnerId)}</b> récupère son perso gratuitement</div>` : `
       <div class="sold">${esc(u.labels.sold)}</div>
       ${charCard(sale.charId, { price: sale.price, flip: true })}
       <div class="who"><b>${pname(sale.winnerId)}</b> remporte le perso pour <b>${money(sale.price)}</b></div>`);
@@ -654,7 +689,7 @@ document.addEventListener("input", (e) => {
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Enter") return;
   const field = e.target.dataset?.field;
-  if (field === "bid" || field === "hint") document.querySelector('[data-action="bid"]')?.click();
+  if (field === "bid" || field === "hint") document.querySelector('[data-action="bid"], [data-action="offer"]')?.click();
   if (field === "code" || (field === "name" && ui.tab === "join")) document.querySelector('[data-action="join"]')?.click();
 });
 
@@ -690,6 +725,8 @@ document.addEventListener("click", async (e) => {
     case "draw": return act({ type: "draw" });
     case "bid": return act({ type: "bid", amount: ui.bid, hint: ui.hint });
     case "pass": return act({ type: "pass" });
+    case "offer": return act({ type: "offer", hint: ui.hint });
+    case "take": return act({ type: "bid", amount: E.minNextBid(session.state) });
     case "vote": return act({ type: "vote", targetId: v });
     case "bid-set": ui.bid = Number(v); break;
     case "bid-add": ui.bid = Math.max(Number(ui.bid) || 0, E.minNextBid(session.state) - Number(v)) + Number(v); break;
