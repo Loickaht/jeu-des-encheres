@@ -944,6 +944,81 @@ export const CHARACTERS = {
    "id": "dragonball-2108",
    "name": "Oolong",
    "img": "https://s4.anilist.co/file/anilistcdn/character/large/2108.jpg"
+  },
+  {
+   "id": "dragonball-127217",
+   "name": "Grand Prêtre",
+   "img": "https://s4.anilist.co/file/anilistcdn/character/large/127217-c4K0tjHvgL8x.jpg"
+  },
+  {
+   "id": "dragonball-267066",
+   "name": "Gas",
+   "img": "https://s4.anilist.co/file/anilistcdn/character/large/b267066-mNmSnrQuv3Sr.png"
+  },
+  {
+   "id": "dragonball-vegito",
+   "name": "Vegeto",
+   "img": "https://static.wikia.nocookie.net/dragonball/images/5/53/Vegito.jpg/revision/latest/scale-to-width-down/450?cb=20250317214139"
+  },
+  {
+   "id": "dragonball-gogeta",
+   "name": "Gogeta",
+   "img": "https://static.wikia.nocookie.net/dragonball/images/7/7b/Gogeta_Base_Full.jpg/revision/latest/scale-to-width-down/387?cb=20191027075547"
+  },
+  {
+   "id": "dragonball-kefla",
+   "name": "Kefla",
+   "img": "https://static.wikia.nocookie.net/dragonball/images/a/af/Kefla_01.png/revision/latest/scale-to-width-down/306?cb=20171105024801"
+  },
+  {
+   "id": "dragonball-iwne",
+   "name": "Iwne",
+   "img": "https://static.wikia.nocookie.net/dragonball/images/8/8b/IwenA.png/revision/latest?cb=20170718043114"
+  },
+  {
+   "id": "dragonball-180813",
+   "name": "Heles",
+   "img": "https://s4.anilist.co/file/anilistcdn/character/large/b180813-vhSAytb9m6Zl.jpg"
+  },
+  {
+   "id": "dragonball-mosco",
+   "name": "Mosco",
+   "img": "https://static.wikia.nocookie.net/dragonball/images/e/e7/Mule.png/revision/latest/scale-to-width-down/600?cb=20171224231110"
+  },
+  {
+   "id": "dragonball-180804",
+   "name": "Quitela",
+   "img": "https://s4.anilist.co/file/anilistcdn/character/large/b180804-8MytlItCgryN.jpg"
+  },
+  {
+   "id": "dragonball-arak",
+   "name": "Arak",
+   "img": "https://static.wikia.nocookie.net/dragonball/images/5/55/Arak.png/revision/latest/scale-to-width-down/444?cb=20170828113910"
+  },
+  {
+   "id": "dragonball-180814",
+   "name": "Sidra",
+   "img": "https://s4.anilist.co/file/anilistcdn/character/large/b180814-5EVSoRqMyW6e.jpg"
+  },
+  {
+   "id": "dragonball-180815",
+   "name": "Rumsshi",
+   "img": "https://s4.anilist.co/file/anilistcdn/character/large/b180815-6tBnmjPVvD7Y.jpg"
+  },
+  {
+   "id": "dragonball-180809",
+   "name": "Belmod",
+   "img": "https://s4.anilist.co/file/anilistcdn/character/large/b180809-GsT9sHOBl65v.png"
+  },
+  {
+   "id": "dragonball-180806",
+   "name": "Liquiir",
+   "img": "https://s4.anilist.co/file/anilistcdn/character/large/b180806-OsL4VXGeeWHu.jpg"
+  },
+  {
+   "id": "dragonball-geene",
+   "name": "Geene",
+   "img": "https://static.wikia.nocookie.net/dragonball/images/2/2b/Screenshot_geene8.png/revision/latest/scale-to-width-down/293?cb=20170703014824"
   }
  ],
  "mha": [
