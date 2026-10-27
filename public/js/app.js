@@ -253,7 +253,7 @@ function howtoModal() {
         <li>Quand il ne reste qu'un joueur incomplet, il reçoit gratuitement des persos tirés au hasard pour finir son équipe.</li>
       </ul>
       <h3>Pas de meneur</h3>
-      <p>Chaque joueur décide pour lui-même. En ligne, la partie démarre dès que tous les joueurs (2 minimum) sont prêts.</p>
+      <p>Chaque joueur décide pour lui-même. En ligne, la partie démarre dès que tous les joueurs (2 minimum) sont prêts. À la fin, chacun peut cliquer sur « Rejouer » : la revanche démarre avec les mêmes règles quand tout le monde est partant.</p>
     </div>
   </div>`;
 }
@@ -579,7 +579,7 @@ function renderEnd() {
       <div class="crown">👑</div>
       <h2 style="font-size:2.8rem">${r.winners.length > 1 ? `Égalité : ${names}` : `${names} l'emporte !`}</h2>
       <p class="muted">Résultat du vote des joueurs.</p>
-      <button class="btn big" data-action="quit">Nouvelle partie<span class="sub">Retour à l'accueil</span></button>
+      ${rematchBox()}
     </section>
     <div class="teams">${[...s.players].sort((a, b) => (r.counts[b.id] || 0) - (r.counts[a.id] || 0)).map((p) => `
       <section class="panel team vote-team ${r.winners.includes(p.id) ? "winner" : ""}">
@@ -588,6 +588,27 @@ function renderEnd() {
         <p class="muted" style="font-size:.85rem;margin-bottom:0">Voté par : ${Object.entries(s.votes).filter(([, t]) => t === p.id).map(([v]) => pname(v)).join(", ") || "personne"}</p>
       </section>`).join("")}</div>
   </div>`;
+}
+
+// Rejouer avec les mêmes joueurs et les mêmes règles.
+function rematchBox() {
+  const s = session.state;
+  if (session.kind === "local") {
+    return `<div class="actions" style="justify-content:center">
+      <button class="btn big" data-action="rematch" data-value="1">Rejouer<span class="sub">Mêmes joueurs, mêmes règles</span></button>
+      <button class="btn big ghost" data-action="quit">Accueil<span class="sub">Changer les règles</span></button>
+    </div>`;
+  }
+  const mine = player(s.me);
+  const here = s.players.filter((p) => p.connected);
+  return `<div class="actions" style="justify-content:center">
+      <button class="btn big ${mine?.rematch ? "ghost" : ""}" data-action="rematch" data-value="${mine?.rematch ? "0" : "1"}">
+        ${mine?.rematch ? "Je ne rejoue plus" : "Rejouer"}<span class="sub">${mine?.rematch ? "Annuler" : "Mêmes joueurs, mêmes règles"}</span></button>
+      <button class="btn big ghost" data-action="quit">Quitter la salle<span class="sub">Retour à l'accueil</span></button>
+    </div>
+    <p class="muted" style="font-size:.9rem;margin-bottom:0">
+      Partants : ${here.map((p) => `${esc(p.name)} ${p.rematch ? "✔" : "(en attente)"}`).join(" · ")}.
+      La nouvelle partie démarre quand tout le monde est partant.</p>`;
 }
 
 // ---------- Superpositions ----------
@@ -649,7 +670,8 @@ function render() {
   const caret = focused && "selectionStart" in focused ? focused.selectionStart : null;
 
   const s = session?.state;
-  document.body.dataset.theme = s ? s.config.universe : "home";
+  // Sur l'accueil, le thème suit l'univers choisi (neutre pour rejoindre une salle).
+  document.body.dataset.theme = s ? s.config.universe : ui.tab === "join" ? "home" : ui.form.universe;
   if (!session) app.innerHTML = renderHome();
   else if (!s) app.innerHTML = `<div class="wrap"><p class="muted">Connexion à la salle…</p></div>`;
   else if (s.phase === "lobby") app.innerHTML = renderLobby();
@@ -662,6 +684,13 @@ function render() {
     ui.seenSales = s.history.length;
     ui.seenAutoFill = !!s.autoFill;
   }
+  // Revanche : nouvelle manche, on repart de zéro côté affichage.
+  if (s && ui.round != null && s.round !== ui.round) {
+    Object.assign(ui, { seenSales: 0, seenAutoFill: false, peek: false, secretFor: null, bidKey: null });
+    overlay.innerHTML = "";
+    window.scrollTo(0, 0);
+  }
+  ui.round = s ? s.round : null;
   if (s && !overlay.querySelector(".reveal-back")) renderOverlay();
   else if (session?.kind === "local" && ui.secretFor) renderOverlay();
 
@@ -715,10 +744,14 @@ document.addEventListener("click", async (e) => {
     case "leave": await emit("leave"); return leaveToHome();
     case "quit":
       if (session.state.phase === "end" || confirm("Quitter la partie ?")) {
-        if (session.kind === "online" && session.state.phase === "lobby") await emit("leave");
+        if (session.kind === "online" && ["lobby", "end"].includes(session.state.phase)) await emit("leave");
         return leaveToHome();
       }
       return;
+    case "rematch":
+      if (session.kind === "online") { await emit("rematch", v === "1"); return; }
+      E.restartGame(session.state);
+      break;
     case "copy":
       try { await navigator.clipboard.writeText(v); toast("Lien copié !"); } catch { prompt("Copie ce lien :", v); }
       return;

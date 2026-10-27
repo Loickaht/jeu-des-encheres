@@ -34,7 +34,9 @@ export function createGame(config, charIds) {
   return {
     config,
     phase: "lobby",
+    round: 1,
     players: [],
+    allIds: [...charIds],
     pool: [...charIds],
     handId: null,
     current: null,
@@ -57,11 +59,48 @@ export function addPlayer(state, id, name) {
   return player;
 }
 
-export function removePlayer(state, id) {
-  if (state.phase !== "lobby") return;
+// On ne quitte vraiment la salle qu'avant ou après une partie (sinon on reste inscrit et on peut revenir).
+export function removePlayer(state, id, rng = Math.random) {
+  if (state.phase !== "lobby" && state.phase !== "end") return;
   const p = getPlayer(state, id);
   state.players = state.players.filter((x) => x.id !== id);
   if (p) pushLog(state, `${p.name} quitte la salle.`);
+  if (state.phase === "end") maybeRematch(state, rng);
+}
+
+// Revanche : chacun dit s'il veut rejouer. Pas de meneur : la nouvelle partie démarre
+// quand tous les joueurs connectés (2 minimum) le veulent.
+export function wantRematch(state, id, want = true, rng = Math.random) {
+  if (state.phase !== "end") fail("La partie n'est pas terminée.");
+  const p = getPlayer(state, id) || fail("Joueur inconnu.");
+  p.rematch = !!want;
+  maybeRematch(state, rng);
+}
+
+export function maybeRematch(state, rng = Math.random) {
+  if (state.phase !== "end") return;
+  const here = state.players.filter((x) => x.connected !== false);
+  if (here.length < 2 || !here.every((x) => x.rematch)) return;
+  restartGame(state, rng);
+}
+
+// Nouvelle partie avec les mêmes règles et les joueurs présents.
+export function restartGame(state, rng = Math.random) {
+  state.players = state.players.filter((x) => x.connected !== false);
+  for (const p of state.players) Object.assign(p, { money: state.config.budget, team: [], rematch: false, ready: true });
+  Object.assign(state, {
+    round: state.round + 1,
+    pool: [...state.allIds],
+    current: null,
+    lastSale: null,
+    history: [],
+    votes: {},
+    results: null,
+    autoFill: null,
+    log: [],
+  });
+  pushLog(state, "Revanche ! Nouvelle partie avec les mêmes joueurs.");
+  startGame(state, rng);
 }
 
 // Pas de meneur : la partie démarre quand tous les joueurs (2 minimum) sont prêts.
@@ -273,6 +312,7 @@ export function viewFor(state, playerId) {
   const v = JSON.parse(JSON.stringify(state));
   v.poolCount = v.pool.length;
   delete v.pool;
+  delete v.allIds;
   if (v.current && v.config.mode !== "open" && v.current.drawerId !== playerId) v.current.charId = null;
   if (v.phase !== "end") {
     v.votesCast = Object.keys(v.votes);

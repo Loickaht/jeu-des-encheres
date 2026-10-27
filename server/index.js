@@ -7,7 +7,7 @@ import { Server } from "socket.io";
 import { UNIVERSES } from "../shared/catalog.js";
 import {
   GameError, normalizeConfig, createGame, addPlayer, removePlayer,
-  setReady, applyAction, getPlayer, viewFor,
+  setReady, applyAction, getPlayer, viewFor, wantRematch, maybeRematch,
 } from "../shared/engine.js";
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -94,6 +94,7 @@ io.on("connection", (socket) => {
 
   socket.on("ready", (ready, ack) => withRoom(ack, (room) => setReady(room.state, socket.data.playerId, ready)));
   socket.on("action", (action, ack) => withRoom(ack, (room) => applyAction(room.state, socket.data.playerId, action)));
+  socket.on("rematch", (want, ack) => withRoom(ack, (room) => wantRematch(room.state, socket.data.playerId, want)));
 
   socket.on("leave", (_arg, ack) => withRoom(ack, (room) => {
     removePlayer(room.state, socket.data.playerId);
@@ -106,6 +107,8 @@ io.on("connection", (socket) => {
     const p = room && getPlayer(room.state, playerId);
     if (!p) return;
     p.connected = false;
+    // Les autres attendaient peut-être seulement ce joueur pour la revanche.
+    maybeRematch(room.state);
     broadcast(code);
     if (room.state.phase === "lobby") {
       setTimeout(() => {

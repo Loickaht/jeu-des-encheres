@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   createGame, addPlayer, setReady, applyAction, normalizeConfig, viewFor, maxBid, GameError,
+  wantRematch, removePlayer, maybeRematch,
 } from "../shared/engine.js";
 
 const ids = Array.from({ length: 60 }, (_, i) => `c${i}`);
@@ -176,4 +177,58 @@ test("équipe complète : plus de main ; dernier joueur complété gratuitement 
   applyAction(s, "p2", { type: "vote", targetId: "p2" });
   assert.equal(s.phase, "end");
   assert.deepEqual(s.results.winners, ["p1"]);
+});
+
+// Joue une partie complète (chacun prend le perso qu'il tire) jusqu'à l'écran de fin.
+function playToEnd(s) {
+  while (s.phase === "draw" || s.phase === "bidding") {
+    if (s.phase === "draw") applyAction(s, s.handId, { type: "draw" });
+    else if (!s.current.highBidder) applyAction(s, s.current.turnId, { type: "bid", amount: 10 });
+    else applyAction(s, s.current.turnId, { type: "pass" });
+  }
+  for (const p of s.players) applyAction(s, p.id, { type: "vote", targetId: p.id });
+}
+
+test("revanche : elle démarre quand tout le monde est partant", () => {
+  const s = setup(3);
+  playToEnd(s);
+  assert.equal(s.phase, "end");
+  wantRematch(s, "p0", true);
+  wantRematch(s, "p1", true);
+  assert.equal(s.phase, "end");
+  wantRematch(s, "p2", true);
+  assert.equal(s.phase, "draw");
+  assert.equal(s.round, 2);
+  assert.equal(s.pool.length, ids.length);
+  assert.ok(s.players.every((p) => p.money === 100 && p.team.length === 0 && !p.rematch));
+  assert.equal(s.history.length, 0);
+  assert.equal(viewFor(s, "p0").allIds, undefined);
+});
+
+test("revanche : ceux qui partent ou se déconnectent ne bloquent pas les autres", () => {
+  const s = setup(3);
+  playToEnd(s);
+  wantRematch(s, "p0", true);
+  wantRematch(s, "p1", true);
+  removePlayer(s, "p2");
+  assert.equal(s.phase, "draw");
+  assert.deepEqual(s.players.map((p) => p.id), ["p0", "p1"]);
+
+  const t = setup(3);
+  playToEnd(t);
+  wantRematch(t, "p0", true);
+  wantRematch(t, "p1", true);
+  t.players[2].connected = false;
+  maybeRematch(t);
+  assert.equal(t.phase, "draw");
+  assert.equal(t.players.length, 2);
+});
+
+test("revanche : il faut être au moins 2", () => {
+  const s = setup(2);
+  playToEnd(s);
+  wantRematch(s, "p0", true);
+  removePlayer(s, "p1");
+  assert.equal(s.phase, "end");
+  assert.throws(() => applyAction(s, "p0", { type: "draw" }), GameError);
 });

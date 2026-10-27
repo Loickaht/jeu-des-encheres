@@ -6,7 +6,7 @@ export const UNIVERSES = {
   onepiece: {
     name: "One Piece",
     currency: "฿",
-    tile: "linear-gradient(135deg, #0b2a4f, #1f5a8f 55%, #f2c14e)",
+    tile: "linear-gradient(135deg, #8f2420, #c9413a)",
     ribbon: "WANTED",
     team: "Équipage",
     labels: {
@@ -23,7 +23,7 @@ export const UNIVERSES = {
   naruto: {
     name: "Naruto",
     currency: "Ryō",
-    tile: "linear-gradient(135deg, #1a120c, #b23a1a 55%, #ff7a1a)",
+    tile: "linear-gradient(135deg, #b54c0a, #e8742a)",
     ribbon: "忍",
     team: "Escouade",
     labels: {
@@ -40,7 +40,7 @@ export const UNIVERSES = {
   dragonball: {
     name: "Dragon Ball",
     currency: "Zénis",
-    tile: "linear-gradient(135deg, #0e1d5c, #2448b0 50%, #ff8c1a)",
+    tile: "linear-gradient(135deg, #c27c00, #eeaa2a)",
     ribbon: "Z",
     team: "Escouade Z",
     labels: {
@@ -57,7 +57,7 @@ export const UNIVERSES = {
   mha: {
     name: "My Hero Academia",
     currency: "¥",
-    tile: "linear-gradient(135deg, #11291d, #1f8a5b 50%, #e63946)",
+    tile: "linear-gradient(135deg, #176b40, #2a9d60)",
     ribbon: "U.A.",
     team: "Agence",
     labels: {
@@ -74,7 +74,7 @@ export const UNIVERSES = {
   jjk: {
     name: "Jujutsu Kaisen",
     currency: "¥",
-    tile: "linear-gradient(135deg, #0d0a18, #3b1a66 55%, #3fd0ff)",
+    tile: "linear-gradient(135deg, #3f2a8c, #6a4bd6)",
     ribbon: "呪",
     team: "Clan",
     labels: {
