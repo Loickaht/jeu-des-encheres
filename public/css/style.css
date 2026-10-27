@@ -2,7 +2,7 @@
 /* Thèmes clairs et sobres : un fond clair, une couleur principale par univers. */
 :root, body[data-theme="home"] {
   --bg: #f5f4f1;
-  --panel: #ffffff;
+  --panel: rgba(255, 255, 255, 0.9);
   --panel-solid: #ffffff;
   --border: #e3e0da;
   --soft: rgba(0, 0, 0, 0.045);
@@ -89,8 +89,8 @@ body[data-theme="jjk"] {
   --accent-ink: #5b3cc4;
   --accent2: #b3362c;
   --font-display: "Zen Antique", serif;
-  --card-bg: #fbfaff;
-  --card-frame: #2b2250;
+  --card-bg: #f6efdc;
+  --card-frame: #b3362c;
   --card-text: #1b1730;
 }
 
@@ -110,6 +110,25 @@ button, input, select, textarea { font: inherit; color: inherit; }
 a { color: var(--accent-ink); }
 .hidden { display: none !important; }
 .wrap { max-width: 1180px; margin: 0 auto; padding: 24px 16px 48px; }
+/* ---------- Décors de fond ---------- */
+#deco { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+#deco .d { position: absolute; }
+#deco .d svg { display: block; width: 100%; height: auto; }
+#deco .halftone {
+  left: 0; bottom: 0; width: 380px; height: 380px; opacity: 0.18;
+  background: radial-gradient(#13261a 32%, transparent 34%) 0 0 / 14px 14px;
+  -webkit-mask-image: radial-gradient(circle at 0 100%, #000, transparent 70%);
+  mask-image: radial-gradient(circle at 0 100%, #000, transparent 70%);
+}
+#app { position: relative; z-index: 1; }
+/* En partie, le décor s'efface un peu pour laisser la place au jeu. */
+body.in-room #deco { opacity: 0.55; }
+
+.emblem { display: inline-block; vertical-align: middle; }
+.emblem svg { display: block; height: 100%; width: auto; }
+.title .emblem { height: 1.6rem; margin-right: 10px; transform: translateY(-3px); }
+.hero-emblem { display: block; height: 64px; margin: 0 auto 10px; font-size: 2.4rem; line-height: 64px; }
+.hero-emblem svg { margin: 0 auto; }
 h1, h2, h3, .display { font-family: var(--font-display); font-weight: 400; letter-spacing: 0.5px; margin: 0; }
 .muted { color: var(--muted); }
 .panel {
@@ -135,7 +154,7 @@ h1, h2, h3, .display { font-family: var(--font-display); font-weight: 400; lette
 .btn .sub { font-size: 0.7rem; font-weight: 600; opacity: 0.75; text-transform: uppercase; letter-spacing: 1px; }
 .btn.big { font-size: 1.25rem; padding: 16px 28px; font-family: var(--font-display); letter-spacing: 1px; }
 .btn.danger { background: var(--accent2); color: var(--accent2-text); box-shadow: 0 2px 0 color-mix(in srgb, var(--accent2) 55%, #000); }
-.btn.ghost { background: transparent; color: var(--text); border: 1px solid var(--border); box-shadow: none; }
+.btn.ghost { background: var(--panel); color: var(--text); border: 1px solid var(--border); box-shadow: none; }
 .btn.small { padding: 6px 12px; font-size: 0.85rem; }
 
 /* ---------- Formulaires ---------- */
@@ -171,7 +190,6 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
   color: var(--accent-ink);
 }
 .hero p { color: var(--muted); max-width: 560px; margin: 14px auto 0; }
-.hammer { font-size: 2.4rem; display: block; margin-bottom: 6px; }
 
 .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 24px 0 18px; }
 .tab {
@@ -240,10 +258,40 @@ input:focus, select:focus, textarea:focus { border-color: var(--accent); }
 .char-card.mystery .photo { display: flex; align-items: center; justify-content: center; font-family: var(--font-display); font-size: 7rem; color: var(--card-frame); }
 .char-card.flip { animation: flip 0.6s ease; }
 @keyframes flip { from { transform: rotateY(90deg) scale(0.9); } to { transform: rotateY(0) scale(1); } }
+.char-card .csub { text-align: center; font-family: var(--font-display); font-size: 1rem; letter-spacing: 2px; padding-top: 6px; }
 
+/* Cartes aux couleurs de chaque œuvre */
+/* One Piece : avis de recherche sur parchemin. */
+body[data-theme="onepiece"] .char-card {
+  background: radial-gradient(ellipse at center, #f8f1df 55%, #e4cf9f 100%);
+  border-radius: 6px; border-width: 3px;
+}
+body[data-theme="onepiece"] .char-card .ribbon { font-size: 2.1rem; letter-spacing: 6px; }
+/* Naruto : parchemin ninja, rouleaux de bois en haut et en bas. */
+body[data-theme="naruto"] .char-card {
+  border-radius: 6px; border-width: 2px 3px;
+  border-top: 12px solid #7a4a24; border-bottom: 12px solid #7a4a24;
+  background: linear-gradient(180deg, #fbf1de, #f4e2c1);
+}
+body[data-theme="naruto"] .char-card .ribbon { color: var(--card-frame); }
+/* Dragon Ball : étoiles et lueur orangée. */
+body[data-theme="dragonball"] .char-card { background: radial-gradient(circle at 50% 0%, #ffe3a3, #fffaf0 62%); }
+body[data-theme="dragonball"] .char-card .ribbon { color: #d7261e; }
 body[data-theme="dragonball"] .char-card .ribbon::before { content: "★ "; }
 body[data-theme="dragonball"] .char-card .ribbon::after { content: " ★"; }
-body[data-theme="naruto"] .char-card .ribbon { color: var(--card-frame); }
+/* My Hero Academia : case de BD, trame et ombre décalée. */
+body[data-theme="mha"] .char-card {
+  border-radius: 4px; transform: rotate(-1.2deg);
+  background: radial-gradient(rgba(19, 38, 26, 0.14) 1.2px, transparent 1.5px) 0 0 / 8px 8px, #ffffff;
+  box-shadow: 6px 6px 0 #13261a;
+}
+/* Jujutsu Kaisen : talisman de papier au liseré rouge. */
+body[data-theme="jjk"] .char-card {
+  border-radius: 4px; border-width: 2px;
+  box-shadow: inset 0 0 0 6px #f6efdc, inset 0 0 0 8px #b3362c, 0 8px 24px rgba(0,0,0,0.12);
+}
+body[data-theme="jjk"] .char-card .ribbon { color: #b3362c; }
+
 
 .auction-info { text-align: center; margin-top: 14px; }
 .auction-info .high { font-family: var(--font-display); font-size: 2.6rem; color: var(--accent-ink); line-height: 1; }

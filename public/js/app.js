@@ -1,8 +1,10 @@
 import { UNIVERSES, findChar } from "/shared/catalog.js";
 import * as E from "/shared/engine.js";
+import { DECO, EMBLEM } from "/js/deco.js";
 
 const app = document.getElementById("app");
 const overlay = document.getElementById("overlay");
+const deco = document.getElementById("deco");
 
 // session : null (accueil) | { kind: "online", state, code } | { kind: "local", state }
 let session = null;
@@ -131,6 +133,11 @@ function leaveToHome() {
 }
 
 // ---------- Accueil ----------
+// Sur l'accueil, le thème suit l'univers choisi (neutre pour rejoindre une salle).
+function homeTheme() {
+  return ui.tab === "join" ? "home" : ui.form.universe;
+}
+
 function renderHome() {
   const f = ui.form;
   const tabs = [
@@ -141,7 +148,7 @@ function renderHome() {
   return `
   <div class="wrap">
     <header class="hero">
-      <span class="hammer">🔨</span>
+      <span class="emblem hero-emblem">${EMBLEM[homeTheme()] || "🔨"}</span>
       <h1>Le Jeu des Enchères</h1>
       <p>Tire un perso, mise, bluffe, laisse filer… et compose la meilleure équipe avec ton budget.</p>
     </header>
@@ -312,7 +319,7 @@ function topbar() {
   return `
   <div class="topbar">
     <div>
-      <div class="title display">${uni().name} · Le Jeu des Enchères</div>
+      <div class="title display"><span class="emblem">${EMBLEM[s.config.universe] || ""}</span>${uni().name} · Le Jeu des Enchères</div>
       <div class="muted" style="font-size:.85rem">${E.MODES[s.config.mode]} · ${s.config.teamSize} persos · ${s.poolCount ?? s.pool?.length ?? ""} persos dans la pioche</div>
     </div>
     <div class="topbar-actions">
@@ -384,14 +391,14 @@ function charCard(charId, { price, caption, flip } = {}) {
   if (!ch) {
     return `<div class="char-card mystery ${flip ? "flip" : ""}">
       <div class="ribbon">${esc(u.ribbon)}</div>
-      <div class="photo">?</div>
+      <div class="photo">?</div>${u.cardSub ? `<div class="csub">${esc(u.cardSub)}</div>` : ""}
       <div class="cname">${esc(caption || "Perso mystère")}</div>
       <div class="cprice">${price != null ? money(price) : "&nbsp;"}</div>
     </div>`;
   }
   return `<div class="char-card ${flip ? "flip" : ""}">
     <div class="ribbon">${esc(u.ribbon)}</div>
-    <div class="photo"><img src="${esc(ch.img)}" alt="${esc(ch.name)}" referrerpolicy="no-referrer"></div>
+    <div class="photo"><img src="${esc(ch.img)}" alt="${esc(ch.name)}" referrerpolicy="no-referrer"></div>${u.cardSub ? `<div class="csub">${esc(u.cardSub)}</div>` : ""}
     <div class="cname">${esc(ch.name)}</div>
     <div class="cprice">${price != null ? money(price) : "&nbsp;"}</div>
   </div>`;
@@ -483,8 +490,8 @@ function actionPanel() {
       return `${who}<h2>À toi de choisir</h2>
         <p class="status">${pname(c.drawerId)} n'a plus d'argent. Tu prends ce perso pour <b>${money(min)}</b>, ou tu le lui laisses gratuitement.</p>
         <div class="actions">
-          <button class="btn big" data-action="take">Le prendre<span class="sub">Pour ${min} M</span></button>
-          <button class="btn big danger" data-action="pass">Le laisser<span class="sub">Gratuit pour ${pname(c.drawerId)}</span></button>
+          <button class="btn big" data-action="take">Proposer<span class="sub">${min} M</span></button>
+          <button class="btn big danger" data-action="pass">Laisser<span class="sub">Gratuit pour ${pname(c.drawerId)}</span></button>
         </div>`;
     }
     const key = `${s.history.length}-${c.bids.length}-${myId}`;
@@ -506,8 +513,8 @@ function actionPanel() {
         <button class="btn ghost small" data-action="bid-set" data-value="${max}">Tapis ${max}</button>
       </div>
       <div class="actions">
-        <button class="btn big" data-action="bid" ${max < min ? "disabled" : ""}>${esc(opening ? L.open : L.raise)}<span class="sub">Miser</span></button>
-        ${opening && !c.broke ? "" : `<button class="btn big danger" data-action="pass">${esc(L.pass)}<span class="sub">Laisser</span></button>`}
+        <button class="btn big" data-action="bid" ${max < min ? "disabled" : ""}>Proposer</button>
+        ${opening && !c.broke ? "" : `<button class="btn big danger" data-action="pass">Laisser</button>`}
       </div>
       <div style="margin-top:10px">${peekBtn}</div>`;
   }
@@ -670,8 +677,13 @@ function render() {
   const caret = focused && "selectionStart" in focused ? focused.selectionStart : null;
 
   const s = session?.state;
-  // Sur l'accueil, le thème suit l'univers choisi (neutre pour rejoindre une salle).
-  document.body.dataset.theme = s ? s.config.universe : ui.tab === "join" ? "home" : ui.form.universe;
+  const theme = s ? s.config.universe : homeTheme();
+  document.body.dataset.theme = theme;
+  document.body.classList.toggle("in-room", !!s);
+  if (deco.dataset.theme !== theme) {
+    deco.dataset.theme = theme;
+    deco.innerHTML = DECO[theme] || "";
+  }
   if (!session) app.innerHTML = renderHome();
   else if (!s) app.innerHTML = `<div class="wrap"><p class="muted">Connexion à la salle…</p></div>`;
   else if (s.phase === "lobby") app.innerHTML = renderLobby();

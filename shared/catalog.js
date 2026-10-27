@@ -8,12 +8,10 @@ export const UNIVERSES = {
     currency: "฿",
     tile: "linear-gradient(135deg, #8f2420, #c9413a)",
     ribbon: "WANTED",
+    cardSub: "DEAD OR ALIVE",
     team: "Équipage",
     labels: {
       draw: "Hisser le pavillon",
-      open: "Lancer la prime",
-      raise: "Faire grimper la prime",
-      pass: "Larguer les amarres",
       vote: "Rejoindre cet équipage",
       sold: "Recruté dans l'équipage !",
       ready: "Prêt à lever l'ancre",
@@ -28,9 +26,6 @@ export const UNIVERSES = {
     team: "Escouade",
     labels: {
       draw: "Kuchiyose no jutsu !",
-      open: "Engager mes Ryō",
-      raise: "Multiclonage de la mise",
-      pass: "Disparaître en fumée",
       vote: "Désigner le futur Hokage",
       sold: "Mission accomplie !",
       ready: "Bandeau noué, prêt",
@@ -45,9 +40,6 @@ export const UNIVERSES = {
     team: "Escouade Z",
     labels: {
       draw: "Ouvrir une capsule",
-      open: "Concentrer le Ki",
-      raise: "Passer Super Saiyan",
-      pass: "Quitter le tournoi",
       vote: "Couronner ce champion",
       sold: "Fusion réussie !",
       ready: "Ki chargé, prêt",
@@ -62,9 +54,6 @@ export const UNIVERSES = {
     team: "Agence",
     labels: {
       draw: "Repérer un talent",
-      open: "Smash !",
-      raise: "Plus Ultra !",
-      pass: "Retour en classe",
       vote: "Élire le héros n°1",
       sold: "Recrue signée !",
       ready: "Costume enfilé, prêt",
@@ -79,9 +68,6 @@ export const UNIVERSES = {
     team: "Clan",
     labels: {
       draw: "Briser le sceau",
-      open: "Conclure un pacte",
-      raise: "Libérer l'énergie occulte",
-      pass: "Battre en retraite",
       vote: "Désigner le plus fort",
       sold: "Pacte scellé !",
       ready: "Énergie occulte prête",
