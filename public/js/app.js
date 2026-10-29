@@ -23,6 +23,7 @@ const ui = {
     localNames: ["", ""],
   },
   error: "",
+  rosterSearch: "",
   bid: null,
   bidKey: null,
   hint: "",
@@ -144,6 +145,7 @@ function renderHome() {
     ["create", "🏛️", "Créer une salle", "Ouvre une salle et invite jusqu'à 3 amis avec un code."],
     ["join", "🗝️", "Rejoindre une salle", "Entre le code reçu et prends place à la table."],
     ["local", "📺", "Sur place", "Un seul écran, l'appareil passe de main en main."],
+    ["chars", "📚", "Persos disponibles", "Tous les persos jouables, univers par univers."],
   ];
   return `
   <div class="wrap">
@@ -159,7 +161,7 @@ function renderHome() {
         </button>`).join("")}
     </nav>
     <section class="panel">
-      ${ui.tab === "join" ? joinForm(f) : rulesForm(f)}
+      ${ui.tab === "join" ? joinForm(f) : ui.tab === "chars" ? rosterView(f) : rulesForm(f)}
       <div class="error">${esc(ui.error)}</div>
     </section>
     <footer class="footer">
@@ -217,6 +219,34 @@ function rulesForm(f) {
         ? `<button class="btn big" data-action="start-local">Que les enchères commencent !<span class="sub">Lancer la partie</span></button>`
         : `<button class="btn big" data-action="create">Ouvrir la salle<span class="sub">Créer</span></button>`}
     </div>`;
+}
+
+// Onglet « Persos disponibles » : tous les persos jouables d'un univers, par ordre alphabétique.
+function rosterView(f) {
+  const u = UNIVERSES[f.universe];
+  const search = ui.rosterSearch.trim().toLowerCase();
+  const chars = [...u.chars]
+    .sort((a, b) => a.name.localeCompare(b.name, "fr"))
+    .filter((c) => !search || c.name.toLowerCase().includes(search));
+  return `
+    <h2 class="display" style="font-size:2rem">Persos disponibles</h2>
+    <div class="choices" style="margin-top:14px">
+      ${Object.entries(UNIVERSES).map(([id, x]) => `
+        <button class="choice uni-choice ${f.universe === id ? "selected" : ""}" data-action="pick" data-key="universe" data-value="${id}">
+          <div class="uni-bg" style="background:${x.tile}"></div><span>${x.name} · ${x.chars.length}</span>
+        </button>`).join("")}
+    </div>
+    <div class="roster-head">
+      <p class="muted" style="margin:0"><b>${u.chars.length} persos</b> jouables dans ${esc(u.name)}.</p>
+      <input id="f-roster" type="text" data-field="rosterSearch" value="${esc(ui.rosterSearch)}" placeholder="Chercher un perso…">
+    </div>
+    ${chars.length
+      ? `<div class="roster">${chars.map((c) => `
+          <figure class="roster-item">
+            <img src="${esc(c.img)}" alt="${esc(c.name)}" referrerpolicy="no-referrer" loading="lazy">
+            <figcaption>${esc(c.name)}</figcaption>
+          </figure>`).join("")}</div>`
+      : `<p class="muted">Aucun perso ne correspond à « ${esc(ui.rosterSearch)} ».</p>`}`;
 }
 
 function localPlayersForm(f) {
@@ -724,6 +754,7 @@ document.addEventListener("input", (e) => {
   else if (field === "bid") ui.bid = Number(el.value);
   else if (field === "hint") ui.hint = el.value;
   else if (field === "code") ui.form.code = el.value.toUpperCase();
+  else if (field === "rosterSearch") { ui.rosterSearch = el.value; render(); }
   else ui.form[field] = el.value;
 });
 
