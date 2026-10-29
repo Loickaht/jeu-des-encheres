@@ -261,3 +261,12 @@ test("revanche : égalité entre univers, on garde l'actuel s'il est parmi les f
   wantRematch(t, "p1", "mha", () => 0.99);
   assert.ok(["jjk", "mha"].includes(t.config.universe));
 });
+
+test("les mises vont de 10 en 10, le budget aussi", () => {
+  const s = setup(2);
+  applyAction(s, "p0", { type: "draw" });
+  for (const amount of [85, 17, 104]) assert.throws(() => applyAction(s, "p0", { type: "bid", amount }), GameError);
+  applyAction(s, "p0", { type: "bid", amount: 30 });
+  assert.equal(normalizeConfig({ budget: 1004, teamSize: 5 }).budget, 1000);
+  assert.equal(normalizeConfig({ budget: 1005, teamSize: 5 }).budget, 1010);
+});

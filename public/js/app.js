@@ -537,7 +537,8 @@ function actionPanel() {
         <label for="f-hint">Ton indice (affiché avec ta mise)</label>
         <input id="f-hint" type="text" maxlength="${E.HINT_MAX}" data-field="hint" value="${esc(ui.hint)}" placeholder="Ex. : Il ne sait pas nager">` : ""}
       <label for="f-bid">Montant (en millions)</label>
-      <div class="bid-row"><input id="f-bid" type="number" min="${min}" max="${max}" step="10" data-field="bid" value="${ui.bid}"></div>
+      <div class="bid-row"><input id="f-bid" type="text" inputmode="numeric" autocomplete="off" maxlength="6" data-field="bid" value="${ui.bid}"></div>
+      <p class="bid-warn" id="bid-warn">${bidWarning()}</p>
       <div class="quick">
         <button class="btn ghost small" data-action="bid-set" data-value="${min}">Min ${min}</button>
         ${[-100, -50, -10, 10, 50, 100].map((d) => `<button class="btn ghost small" data-action="bid-add" data-value="${d}">${d > 0 ? "+" : "−"}${Math.abs(d)}</button>`).join("")}
@@ -550,6 +551,19 @@ function actionPanel() {
       <div style="margin-top:10px">${peekBtn}</div>`;
   }
   return "";
+}
+
+// Les mises vont de 10 en 10 : on prévient pendant la saisie, et on arrondit en quittant le champ.
+const STEP = 10;
+function snapBid(value) {
+  const min = E.minNextBid(session.state);
+  if (value === "" || !Number.isFinite(Number(value))) return min;
+  return Math.max(min, Math.round(Number(value) / STEP) * STEP);
+}
+
+function bidWarning() {
+  if (ui.bid === "" || ui.bid % STEP === 0) return "";
+  return `Les mises vont de ${STEP} en ${STEP} : ${ui.bid} deviendra ${snapBid(ui.bid)} M.`;
 }
 
 function logBox() {
@@ -721,7 +735,15 @@ function showReveal(html, ms = 3800) {
 }
 
 // ---------- Rendu ----------
+// Pendant un rendu, le champ du montant perd puis retrouve le focus : ce n'est pas l'utilisateur.
+let rendering = false;
 function render() {
+  const outer = rendering;
+  rendering = true;
+  try { draw(); } finally { rendering = outer; }
+}
+
+function draw() {
   const focused = document.activeElement;
   const focusId = focused?.id;
   const caret = focused && "selectionStart" in focused ? focused.selectionStart : null;
@@ -771,7 +793,11 @@ document.addEventListener("input", (e) => {
   const field = el.dataset?.field;
   if (!field) return;
   if (field === "localName") ui.form.localNames[Number(el.dataset.index)] = el.value;
-  else if (field === "bid") ui.bid = Number(el.value);
+  else if (field === "bid") {
+    el.value = el.value.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+    ui.bid = el.value === "" ? "" : Number(el.value);
+    document.getElementById("bid-warn").textContent = bidWarning();
+  }
   else if (field === "hint") ui.hint = el.value;
   else if (field === "code") ui.form.code = el.value.toUpperCase();
   else if (field === "rosterSearch") { ui.rosterSearch = el.value; render(); }
@@ -781,8 +807,33 @@ document.addEventListener("input", (e) => {
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Enter") return;
   const field = e.target.dataset?.field;
+  if (field === "bid" && (ui.bid === "" || ui.bid % STEP)) { fixBid(e.target); e.target.select(); return; }
   if (field === "bid" || field === "hint") document.querySelector('[data-action="bid"], [data-action="offer"]')?.click();
   if (field === "code" || (field === "name" && ui.tab === "join")) document.querySelector('[data-action="join"]')?.click();
+});
+
+// Montant hors des sauts de 10 : corrigé sur place, sans tout redessiner (le clic sur « Proposer » doit passer).
+function fixBid(el) {
+  ui.bid = snapBid(ui.bid);
+  el.value = ui.bid;
+  document.getElementById("bid-warn").textContent = "";
+}
+document.addEventListener("focusout", (e) => {
+  if (e.target.dataset?.field === "bid" && !rendering && (ui.bid === "" || ui.bid % STEP)) fixBid(e.target);
+});
+
+// En entrant dans le champ du montant, tout est sélectionné : on tape directement le nouveau montant.
+let selectOnMouseUp = false;
+document.addEventListener("focusin", (e) => {
+  if (e.target.dataset?.field !== "bid" || rendering) return;
+  e.target.select();
+  selectOnMouseUp = true;
+});
+document.addEventListener("mouseup", (e) => {
+  if (!selectOnMouseUp) return;
+  selectOnMouseUp = false;
+  // Sinon le relâchement du clic placerait le curseur et annulerait la sélection.
+  if (e.target.dataset?.field === "bid") e.preventDefault();
 });
 
 document.addEventListener("click", async (e) => {
@@ -825,7 +876,7 @@ document.addEventListener("click", async (e) => {
       try { await navigator.clipboard.writeText(v); toast("Lien copié !"); } catch { prompt("Copie ce lien :", v); }
       return;
     case "draw": return act({ type: "draw" });
-    case "bid": return act({ type: "bid", amount: ui.bid, hint: ui.hint });
+    case "bid": return act({ type: "bid", amount: snapBid(ui.bid), hint: ui.hint });
     case "pass": return act({ type: "pass" });
     case "offer": return act({ type: "offer", hint: ui.hint });
     case "take": return act({ type: "bid", amount: E.minNextBid(session.state) });
@@ -835,7 +886,7 @@ document.addEventListener("click", async (e) => {
       // On reste toujours entre la mise minimum et tout son argent.
       const min = E.minNextBid(session.state);
       const max = E.maxBid(session.state, player(me()));
-      ui.bid = Math.max(min, Math.min(max, (Number(ui.bid) || min) + Number(v)));
+      ui.bid = Math.min(max, snapBid((Number(ui.bid) || min) + Number(v)));
       break;
     }
     case "peek": ui.peek = !ui.peek; break;

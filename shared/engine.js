@@ -20,7 +20,8 @@ export function normalizeConfig(raw, poolSize) {
   const cfg = {
     universe: String(raw.universe || ""),
     mode: MODES[raw.mode] ? raw.mode : "open",
-    budget: Math.round(Number(raw.budget) || 1000),
+    // Les mises vont de 10 en 10 : le budget aussi, pour que le tapis tombe juste.
+    budget: Math.round((Number(raw.budget) || 1000) / 10) * 10,
     teamSize: Math.round(Number(raw.teamSize) || 5),
     minBid: 10,
     step: 10,
@@ -211,6 +212,7 @@ function bid(state, p, amount, hint) {
   // Face-à-face avec un tireur sans argent : on prend le perso pour la mise minimum.
   if (c.broke && !c.highBidder && c.inAuction.length === 1) amount = min;
   if (amount < min) fail(`La mise doit être d'au moins ${min} M.`);
+  if (amount % state.config.step) fail(`La mise doit aller de ${state.config.step} en ${state.config.step} M (ex. : ${Math.round(amount / state.config.step) * state.config.step} M).`);
   if (amount > maxBid(state, p)) fail(`Tu ne peux pas miser plus de ${maxBid(state, p)} M.`);
   if (!c.highBidder && p.id === c.drawerId && state.config.mode === "blindHint") {
     const h = String(hint || "").trim().slice(0, HINT_MAX);
