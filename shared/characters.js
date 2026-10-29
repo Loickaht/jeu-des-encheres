@@ -632,6 +632,61 @@ export const CHARACTERS = {
    "id": "naruto-2766",
    "name": "Pakkun",
    "img": "https://s4.anilist.co/file/anilistcdn/character/large/n2766-kJfGu56HevA0.png"
+  },
+  {
+   "id": "naruto-15362",
+   "name": "Yugito Nii",
+   "img": "https://s4.anilist.co/file/anilistcdn/character/large/15362.jpg"
+  },
+  {
+   "id": "naruto-23222",
+   "name": "Yagura",
+   "img": "https://s4.anilist.co/file/anilistcdn/character/large/b23222-SVk7rDZKcEA5.png"
+  },
+  {
+   "id": "naruto-14082",
+   "name": "Rin Nohara",
+   "img": "https://s4.anilist.co/file/anilistcdn/character/large/b14082-AAP0WNST5DRO.jpg"
+  },
+  {
+   "id": "naruto-23221",
+   "name": "Roshi",
+   "img": "https://s4.anilist.co/file/anilistcdn/character/large/b23221-VR3i2c0aDOfk.png"
+  },
+  {
+   "id": "naruto-23223",
+   "name": "Han",
+   "img": "https://s4.anilist.co/file/anilistcdn/character/large/b23223-XdbDbvsVkbfd.png"
+  },
+  {
+   "id": "naruto-23219",
+   "name": "Utakata",
+   "img": "https://s4.anilist.co/file/anilistcdn/character/large/b23219-eEWDh3idJwit.jpg"
+  },
+  {
+   "id": "naruto-23220",
+   "name": "Fu",
+   "img": "https://s4.anilist.co/file/anilistcdn/character/large/23220.jpg"
+  },
+  {
+   "id": "naruto-56691",
+   "name": "Mito Uzumaki",
+   "img": "https://s4.anilist.co/file/anilistcdn/character/large/b56691-WkpdKOoETJWo.png"
+  },
+  {
+   "id": "naruto-197843",
+   "name": "Indra Otsutsuki",
+   "img": "https://s4.anilist.co/file/anilistcdn/character/large/b197843-kUcrXaFGesMU.jpg"
+  },
+  {
+   "id": "naruto-269851",
+   "name": "Asura Otsutsuki",
+   "img": "https://s4.anilist.co/file/anilistcdn/character/large/b269851-hpIaqSiC0HnE.png"
+  },
+  {
+   "id": "naruto-127030",
+   "name": "Toneri Otsutsuki",
+   "img": "https://s4.anilist.co/file/anilistcdn/character/large/b127030-IJCceOqNYqXb.png"
   }
  ],
  "dragonball": [
