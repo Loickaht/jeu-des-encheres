@@ -1,6 +1,8 @@
 // Moteur du jeu des enchères : logique pure, utilisée par le serveur (salles en ligne)
 // et par le navigateur (mode Sur place). Les montants sont exprimés en millions.
 
+import { UNIVERSES } from "./catalog.js";
+
 export const MODES = {
   open: "Tout le monde voit",
   blindHint: "À l'aveugle avec indice",
@@ -68,12 +70,15 @@ export function removePlayer(state, id, rng = Math.random) {
   if (state.phase === "end") maybeRematch(state, rng);
 }
 
-// Revanche : chacun dit s'il veut rejouer. Pas de meneur : la nouvelle partie démarre
-// quand tous les joueurs connectés (2 minimum) le veulent.
+// Revanche : chacun dit s'il veut rejouer, et dans quel univers. Pas de meneur : la nouvelle
+// partie démarre quand tous les joueurs connectés (2 minimum) sont partants.
 export function wantRematch(state, id, want = true, rng = Math.random) {
   if (state.phase !== "end") fail("La partie n'est pas terminée.");
   const p = getPlayer(state, id) || fail("Joueur inconnu.");
-  p.rematch = !!want;
+  if (want === true) want = state.config.universe;
+  if (want && typeof want !== "string") fail("Univers inconnu.");
+  if (want && want !== state.config.universe && !Object.hasOwn(UNIVERSES, want)) fail("Univers inconnu.");
+  p.rematch = want || false;
   maybeRematch(state, rng);
 }
 
@@ -81,16 +86,30 @@ export function maybeRematch(state, rng = Math.random) {
   if (state.phase !== "end") return;
   const here = state.players.filter((x) => x.connected !== false);
   if (here.length < 2 || !here.every((x) => x.rematch)) return;
-  restartGame(state, rng);
+  restartGame(state, rng, rematchUniverse(state, here, rng));
 }
 
-// Nouvelle partie avec les mêmes règles et les joueurs présents.
-export function restartGame(state, rng = Math.random) {
+// L'univers le plus demandé ; en cas d'égalité, on garde l'actuel s'il en fait partie, sinon tirage au sort.
+function rematchUniverse(state, here, rng) {
+  const counts = {};
+  for (const p of here) counts[p.rematch] = (counts[p.rematch] || 0) + 1;
+  const best = Math.max(...Object.values(counts));
+  const top = Object.keys(counts).filter((u) => counts[u] === best);
+  if (top.includes(state.config.universe)) return state.config.universe;
+  return top[Math.floor(rng() * top.length)];
+}
+
+// Nouvelle partie avec les mêmes règles et les joueurs présents, dans le même univers ou un autre.
+export function restartGame(state, rng = Math.random, universe = state.config.universe) {
+  const same = universe === state.config.universe;
+  const ids = same ? state.allIds : (UNIVERSES[universe] || fail("Univers inconnu.")).chars.map((c) => c.id);
   state.players = state.players.filter((x) => x.connected !== false);
   for (const p of state.players) Object.assign(p, { money: state.config.budget, team: [], rematch: false, ready: true });
   Object.assign(state, {
+    config: { ...state.config, universe },
     round: state.round + 1,
-    pool: [...state.allIds],
+    allIds: [...ids],
+    pool: [...ids],
     current: null,
     lastSale: null,
     history: [],
@@ -99,7 +118,8 @@ export function restartGame(state, rng = Math.random) {
     autoFill: null,
     log: [],
   });
-  pushLog(state, "Revanche ! Nouvelle partie avec les mêmes joueurs.");
+  pushLog(state, same ? "Revanche ! Nouvelle partie avec les mêmes joueurs."
+    : `Revanche ! Nouvelle partie avec les mêmes joueurs, cette fois dans ${UNIVERSES[universe].name}.`);
   startGame(state, rng);
 }
 

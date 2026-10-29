@@ -24,6 +24,7 @@ const ui = {
   },
   error: "",
   rosterSearch: "",
+  rematchUni: null,
   bid: null,
   bidKey: null,
   hint: "",
@@ -290,7 +291,7 @@ function howtoModal() {
         <li>Quand il ne reste qu'un joueur incomplet, il reçoit gratuitement des persos tirés au hasard pour finir son équipe.</li>
       </ul>
       <h3>Pas de meneur</h3>
-      <p>Chaque joueur décide pour lui-même. En ligne, la partie démarre dès que tous les joueurs (2 minimum) sont prêts. À la fin, chacun peut cliquer sur « Rejouer » : la revanche démarre avec les mêmes règles quand tout le monde est partant.</p>
+      <p>Chaque joueur décide pour lui-même. En ligne, la partie démarre dès que tous les joueurs (2 minimum) sont prêts. À la fin, chacun choisit l'univers de la revanche (le même ou un autre) et clique sur « Rejouer » : elle démarre avec les mêmes règles quand tout le monde est partant, dans l'univers le plus choisi.</p>
     </div>
   </div>`;
 }
@@ -539,7 +540,7 @@ function actionPanel() {
       <div class="bid-row"><input id="f-bid" type="number" min="${min}" max="${max}" step="10" data-field="bid" value="${ui.bid}"></div>
       <div class="quick">
         <button class="btn ghost small" data-action="bid-set" data-value="${min}">Min ${min}</button>
-        ${[10, 50, 100].map((d) => `<button class="btn ghost small" data-action="bid-add" data-value="${d}">+${d}</button>`).join("")}
+        ${[-100, -50, -10, 10, 50, 100].map((d) => `<button class="btn ghost small" data-action="bid-add" data-value="${d}">${d > 0 ? "+" : "−"}${Math.abs(d)}</button>`).join("")}
         <button class="btn ghost small" data-action="bid-set" data-value="${max}">Tapis ${max}</button>
       </div>
       <div class="actions">
@@ -627,25 +628,44 @@ function renderEnd() {
   </div>`;
 }
 
-// Rejouer avec les mêmes joueurs et les mêmes règles.
+// Rejouer avec les mêmes joueurs et les mêmes règles, dans le même univers ou un autre.
+function rematchUni() {
+  const s = session.state;
+  return ui.rematchUni || (session.kind === "online" && player(s.me)?.rematch) || s.config.universe;
+}
+
 function rematchBox() {
   const s = session.state;
-  if (session.kind === "local") {
-    return `<div class="actions" style="justify-content:center">
-      <button class="btn big" data-action="rematch" data-value="1">Rejouer<span class="sub">Mêmes joueurs, mêmes règles</span></button>
+  const pick = rematchUni();
+  const online = session.kind === "online";
+  const here = online ? s.players.filter((p) => p.connected) : [];
+  const fans = (id) => here.filter((p) => p.rematch === id).map((p) => esc(p.name));
+  const picker = `
+    <label style="text-align:center">Univers de la prochaine partie</label>
+    <div class="choices rematch-unis">
+      ${Object.entries(UNIVERSES).map(([id, u]) => `
+        <button class="choice uni-choice ${pick === id ? "selected" : ""}" data-action="rematch-uni" data-value="${id}">
+          <div class="uni-bg" style="background:${u.tile}"></div>
+          <span>${u.name}${id === s.config.universe ? "<small>Même univers</small>" : ""}${fans(id).length ? `<small>✔ ${fans(id).join(", ")}</small>` : ""}</span>
+        </button>`).join("")}
+    </div>`;
+  const sub = pick === s.config.universe ? "Même univers, mêmes règles" : `Dans ${esc(UNIVERSES[pick].name)}, mêmes règles`;
+  if (!online) {
+    return `${picker}<div class="actions" style="justify-content:center">
+      <button class="btn big" data-action="rematch" data-value="1">Rejouer<span class="sub">${sub}</span></button>
       <button class="btn big ghost" data-action="quit">Accueil<span class="sub">Changer les règles</span></button>
     </div>`;
   }
   const mine = player(s.me);
-  const here = s.players.filter((p) => p.connected);
-  return `<div class="actions" style="justify-content:center">
+  return `${picker}<div class="actions" style="justify-content:center">
       <button class="btn big ${mine?.rematch ? "ghost" : ""}" data-action="rematch" data-value="${mine?.rematch ? "0" : "1"}">
-        ${mine?.rematch ? "Je ne rejoue plus" : "Rejouer"}<span class="sub">${mine?.rematch ? "Annuler" : "Mêmes joueurs, mêmes règles"}</span></button>
+        ${mine?.rematch ? "Je ne rejoue plus" : "Rejouer"}<span class="sub">${mine?.rematch ? "Annuler" : sub}</span></button>
       <button class="btn big ghost" data-action="quit">Quitter la salle<span class="sub">Retour à l'accueil</span></button>
     </div>
     <p class="muted" style="font-size:.9rem;margin-bottom:0">
-      Partants : ${here.map((p) => `${esc(p.name)} ${p.rematch ? "✔" : "(en attente)"}`).join(" · ")}.
-      La nouvelle partie démarre quand tout le monde est partant.</p>`;
+      Partants : ${here.map((p) => `${esc(p.name)} ${p.rematch ? `✔ ${esc(UNIVERSES[p.rematch]?.name || "")}` : "(en attente)"}`).join(" · ")}.
+      La nouvelle partie démarre quand tout le monde est partant, dans l'univers le plus choisi
+      (en cas d'égalité : le même univers s'il fait partie des favoris, sinon tirage au sort).</p>`;
 }
 
 // ---------- Superpositions ----------
@@ -728,7 +748,7 @@ function render() {
   }
   // Revanche : nouvelle manche, on repart de zéro côté affichage.
   if (s && ui.round != null && s.round !== ui.round) {
-    Object.assign(ui, { seenSales: 0, seenAutoFill: false, peek: false, secretFor: null, bidKey: null });
+    Object.assign(ui, { seenSales: 0, seenAutoFill: false, peek: false, secretFor: null, bidKey: null, rematchUni: null });
     overlay.innerHTML = "";
     window.scrollTo(0, 0);
   }
@@ -791,9 +811,15 @@ document.addEventListener("click", async (e) => {
         return leaveToHome();
       }
       return;
+    case "rematch-uni":
+      ui.rematchUni = v;
+      // Déjà partant : on change simplement d'avis sur l'univers.
+      if (session.kind === "online" && player(session.state.me)?.rematch) { await emit("rematch", v); return; }
+      break;
     case "rematch":
-      if (session.kind === "online") { await emit("rematch", v === "1"); return; }
-      E.restartGame(session.state);
+      if (session.kind === "online") { await emit("rematch", v === "1" ? rematchUni() : false); return; }
+      E.restartGame(session.state, Math.random, rematchUni());
+      ui.rematchUni = null;
       break;
     case "copy":
       try { await navigator.clipboard.writeText(v); toast("Lien copié !"); } catch { prompt("Copie ce lien :", v); }
@@ -805,7 +831,13 @@ document.addEventListener("click", async (e) => {
     case "take": return act({ type: "bid", amount: E.minNextBid(session.state) });
     case "vote": return act({ type: "vote", targetId: v });
     case "bid-set": ui.bid = Number(v); break;
-    case "bid-add": ui.bid = Math.max(Number(ui.bid) || 0, E.minNextBid(session.state) - Number(v)) + Number(v); break;
+    case "bid-add": {
+      // On reste toujours entre la mise minimum et tout son argent.
+      const min = E.minNextBid(session.state);
+      const max = E.maxBid(session.state, player(me()));
+      ui.bid = Math.max(min, Math.min(max, (Number(ui.bid) || min) + Number(v)));
+      break;
+    }
     case "peek": ui.peek = !ui.peek; break;
     case "secret-show": ui.peek = true; break;
     case "secret-done": ui.peek = false; ui.secretFor = null; break;
@@ -871,7 +903,7 @@ function startLocal() {
     names.forEach((n, i) => E.addPlayer(state, `local-${i}`, n));
     E.startGame(state);
     session = { kind: "local", state };
-    Object.assign(ui, { seenSales: 0, seenAutoFill: false, peek: false, secretFor: null, bidKey: null });
+    Object.assign(ui, { seenSales: 0, seenAutoFill: false, peek: false, secretFor: null, bidKey: null, rematchUni: null });
     render();
     window.scrollTo(0, 0);
   } catch (err) {

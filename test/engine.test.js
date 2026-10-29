@@ -232,3 +232,32 @@ test("revanche : il faut être au moins 2", () => {
   assert.equal(s.phase, "end");
   assert.throws(() => applyAction(s, "p0", { type: "draw" }), GameError);
 });
+
+test("revanche : on peut changer d'univers, le plus choisi l'emporte", () => {
+  const s = setup(3);
+  playToEnd(s);
+  assert.throws(() => wantRematch(s, "p0", "__proto__"), GameError);
+  assert.throws(() => wantRematch(s, "p0", "inconnu"), GameError);
+  wantRematch(s, "p0", "naruto");
+  wantRematch(s, "p1", "naruto");
+  wantRematch(s, "p2", true); // même univers
+  assert.equal(s.phase, "draw");
+  assert.equal(s.config.universe, "naruto");
+  assert.ok(s.pool.length > 50 && s.pool.every((id) => !ids.includes(id)));
+  assert.ok(s.players.every((p) => p.money === 100 && !p.rematch));
+});
+
+test("revanche : égalité entre univers, on garde l'actuel s'il est parmi les favoris", () => {
+  const s = setup(2);
+  playToEnd(s);
+  wantRematch(s, "p0", "jjk");
+  wantRematch(s, "p1", true);
+  assert.equal(s.config.universe, "x");
+  assert.equal(s.pool.length, ids.length);
+
+  const t = setup(2);
+  playToEnd(t);
+  wantRematch(t, "p0", "jjk");
+  wantRematch(t, "p1", "mha", () => 0.99);
+  assert.ok(["jjk", "mha"].includes(t.config.universe));
+});
