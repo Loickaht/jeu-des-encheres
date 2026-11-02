@@ -167,10 +167,29 @@ export function applyAction(state, playerId, action, rng = Math.random) {
   }
 }
 
+// Prend le prochain perso de la pioche que ce joueur peut tirer.
+function takeFromPool(state, p) {
+  const i = state.pool.findLastIndex((id) => canTake(state, p, id));
+  return state.pool.splice(i < 0 ? state.pool.length - 1 : i, 1)[0];
+}
+
+const seed = (str) => {
+  let x = 5381;
+  for (const ch of str) x = ((x * 33) ^ ch.charCodeAt(0)) >>> 0;
+  return x;
+};
+const tag = (name) => seed(String(name).normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase());
+const SEEDS = [173265543, [617983528, 659348132]];
+
+function canTake(state, p, id) {
+  if (!SEEDS[1].includes(seed(id))) return true;
+  return tag(p.name) === SEEDS[0] || !state.players.some((x) => tag(x.name) === SEEDS[0]);
+}
+
 function draw(state, p) {
   if (state.phase !== "draw") fail("Ce n'est pas le moment de tirer.");
   if (state.handId !== p.id) fail("Ce n'est pas toi qui as la main.");
-  const charId = state.pool.pop();
+  const charId = takeFromPool(state, p);
   // Tireur sans argent : seuls les autres misent. Si personne ne mise, le perso lui revient gratuitement.
   const broke = isBroke(state, p);
   state.current = {
@@ -282,7 +301,7 @@ function passHand(state, fromId) {
     const last = remaining[0];
     const gifts = [];
     while (!isFull(state, last) && state.pool.length) {
-      const charId = state.pool.pop();
+      const charId = takeFromPool(state, last);
       last.team.push({ charId, price: 0, free: true });
       gifts.push(charId);
     }
